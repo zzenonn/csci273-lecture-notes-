@@ -45,6 +45,14 @@ java -version
 
 You should see output indicating Amazon Corretto version 1.8.0.
 
+**Note:** If you have multiple Java versions installed, you can switch between them using:
+
+```bash
+sudo alternatives --config java
+```
+
+Select the Amazon Corretto 8 option from the list. Verify the change with `java -version`.
+
 ### 2. Install Required Packages
 
 Install tar and curl utilities:
