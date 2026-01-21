@@ -143,6 +143,8 @@ Add the following configuration:
 </configuration>
 ```
 
+**Important:** Each XML configuration file should have only ONE `<configuration>` block. If a `<configuration>` block already exists in the file, add the `<property>` elements inside it rather than creating a new `<configuration>` block.
+
 This configures the default filesystem to use HDFS on localhost.
 
 #### Configure hdfs-site.xml
