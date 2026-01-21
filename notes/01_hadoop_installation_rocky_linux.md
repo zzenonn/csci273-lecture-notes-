@@ -87,7 +87,7 @@ After installing Amazon Corretto 8, configure the JAVA_HOME environment variable
 Edit your `~/.bashrc` file:
 
 ```bash
-nano ~/.bashrc
+vim ~/.bashrc
 ```
 
 Add the following line:
@@ -121,7 +121,7 @@ Pseudo-distributed mode runs Hadoop as a multi-node system on a single machine, 
 Edit `etc/hadoop/core-site.xml`:
 
 ```bash
-nano etc/hadoop/core-site.xml
+vim etc/hadoop/core-site.xml
 ```
 
 Add the following configuration:
@@ -142,7 +142,7 @@ This configures the default filesystem to use HDFS on localhost.
 Edit `etc/hadoop/hdfs-site.xml`:
 
 ```bash
-nano etc/hadoop/hdfs-site.xml
+vim etc/hadoop/hdfs-site.xml
 ```
 
 Add the following configuration:
@@ -289,7 +289,7 @@ To run MapReduce jobs, configure YARN (Yet Another Resource Negotiator).
 Edit `etc/hadoop/mapred-site.xml`:
 
 ```bash
-nano etc/hadoop/mapred-site.xml
+vim etc/hadoop/mapred-site.xml
 ```
 
 Add the following configuration:
