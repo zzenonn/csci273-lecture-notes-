@@ -1,5 +1,7 @@
 # Installing Apache Hadoop on Rocky Linux 10
 
+> **Note:** If your VM has no network connectivity, see [VM No Network Connection Fix](vm-no-network-fix.md) before proceeding.
+
 ## Purpose
 
 This guide provides step-by-step instructions for installing and configuring Apache Hadoop on Rocky Linux 10 in pseudo-distributed mode. This setup simulates a multi-node Hadoop cluster on a single machine, making it ideal for development, testing, and learning purposes.
@@ -275,7 +277,7 @@ bin/hdfs dfs -mkdir -p /user/<your-username>
 #### Upload a File to HDFS
 
 ```bash
-bin/hdfs dfs -put etc/hadoop/LICENSE.txt /user/<your-username>/
+bin/hdfs dfs -put LICENSE.txt /user/<your-username>/
 ```
 
 #### List Files in HDFS
@@ -319,7 +321,13 @@ Add the following configuration:
 
 #### Configure yarn-site.xml
 
-The default `etc/hadoop/yarn-site.xml` configuration is already suitable for pseudo-distributed mode. Verify it contains:
+Edit `etc/hadoop/yarn-site.xml`:
+
+```bash
+vim etc/hadoop/yarn-site.xml
+```
+
+Add the following configuration:
 
 ```xml
 <configuration>
