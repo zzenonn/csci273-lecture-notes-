@@ -58,7 +58,7 @@ Add the following content:
 name=Apache Cassandra
 baseurl=https://redhat.cassandra.apache.org/41x/
 gpgcheck=1
-repo_gpgcheck=1
+repo_gpgcheck=0
 gpgkey=https://downloads.apache.org/cassandra/KEYS
 ```
 
