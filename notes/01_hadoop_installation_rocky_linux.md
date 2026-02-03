@@ -106,7 +106,6 @@ Add the following lines (adjust the Hadoop path if you installed it elsewhere):
 export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto
 export HADOOP_HOME=~/hadoop-3.4.2
 export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
-export HADOOP_CLASSPATH=$JAVA_HOME/lib/tools.jar
 ```
 
 **Note:** If you installed Hadoop in a different location (e.g., `/opt/hadoop`), adjust the `HADOOP_HOME` path accordingly.
