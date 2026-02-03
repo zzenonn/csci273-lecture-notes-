@@ -48,7 +48,6 @@ Add the following lines if not already present:
 export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto
 export HADOOP_HOME=~/hadoop-3.4.2
 export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
-export HADOOP_CLASSPATH=$JAVA_HOME/lib/tools.jar
 ```
 
 Apply the changes:
@@ -91,11 +90,7 @@ Add the following lines at the end:
 ```bash
 export HIVE_HOME=~/apache-hive-2.3.9-bin
 export PATH=$HIVE_HOME/bin:$PATH
-export CLASSPATH=$CLASSPATH:$HADOOP_HOME/lib/*:.
-export CLASSPATH=$CLASSPATH:$HIVE_HOME/lib/*:.
 ```
-
-**Important:** The CLASSPATH configuration ensures that both Hadoop and Hive libraries are available for Java applications.
 
 Apply the changes:
 
@@ -452,18 +447,6 @@ hive -e "SELECT COUNT(*) FROM impressions;"
 1. Verify HADOOP_HOME in `~/.bashrc`
 2. Run `source ~/.bashrc`
 3. Test with `echo $HADOOP_HOME`
-
-### ClassPath Issues
-
-**Symptom:** "ClassNotFoundException" errors
-
-**Solution:**
-- Ensure CLASSPATH includes both Hadoop and Hive libraries
-- Verify the CLASSPATH configuration in `~/.bashrc`:
-  ```bash
-  export CLASSPATH=$CLASSPATH:$HADOOP_HOME/lib/*:.
-  export CLASSPATH=$CLASSPATH:$HIVE_HOME/lib/*:.
-  ```
 
 ### Permission Denied in HDFS
 
