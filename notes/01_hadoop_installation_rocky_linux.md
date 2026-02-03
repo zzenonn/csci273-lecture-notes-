@@ -88,11 +88,11 @@ cd hadoop-3.4.2
 
 **Note:** For production environments, it's best practice to install Hadoop in a system directory (e.g., `/opt/hadoop`). For this tutorial, we're installing in the home directory for simplicity.
 
-### 5. Configure Java Environment
+### 5. Configure Java and Hadoop Environment
 
-#### Set JAVA_HOME
+#### Set JAVA_HOME and HADOOP_HOME
 
-After installing Amazon Corretto 8, configure the JAVA_HOME environment variable. Java is installed at `/usr/lib/jvm/java-1.8.0-amazon-corretto`.
+After installing Amazon Corretto 8, configure the JAVA_HOME and HADOOP_HOME environment variables. Java is installed at `/usr/lib/jvm/java-1.8.0-amazon-corretto`.
 
 Edit your `~/.bashrc` file:
 
@@ -100,11 +100,16 @@ Edit your `~/.bashrc` file:
 vim ~/.bashrc
 ```
 
-Add the following line:
+Add the following lines (adjust the Hadoop path if you installed it elsewhere):
 
 ```bash
 export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto
+export HADOOP_HOME=~/hadoop-3.4.2
+export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+export HADOOP_CLASSPATH=$JAVA_HOME/lib/tools.jar
 ```
+
+**Note:** If you installed Hadoop in a different location (e.g., `/opt/hadoop`), adjust the `HADOOP_HOME` path accordingly.
 
 Apply the changes:
 
@@ -112,15 +117,18 @@ Apply the changes:
 source ~/.bashrc
 ```
 
-#### Verify Java Installation
+#### Verify Environment Variables
 
-Test that Java is properly configured:
+Test that Java and Hadoop are properly configured:
 
 ```bash
+echo $JAVA_HOME
+echo $HADOOP_HOME
 $JAVA_HOME/bin/java -version
+hadoop version
 ```
 
-You should see output showing Amazon Corretto version 1.8.0. If you see "missing JAVA_HOME" errors, ensure the JAVA_HOME variable is correctly set and sourced.
+You should see output showing Amazon Corretto version 1.8.0 and Hadoop version 3.4.2. If you see "missing JAVA_HOME" or "hadoop: command not found" errors, ensure the environment variables are correctly set and sourced.
 
 ### 6. Configure Hadoop for Pseudo-Distributed Mode
 
