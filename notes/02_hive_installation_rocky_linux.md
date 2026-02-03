@@ -11,9 +11,11 @@ This guide provides step-by-step instructions for installing and configuring Apa
 ### Required Software
 
 - **Rocky Linux 10** with Hadoop installed and configured
-- **Java 8 (Amazon Corretto)** - Already installed from Hadoop setup
+- **Java 8 or newer** - We use Amazon Corretto 8 (already installed from Hadoop setup)
 - **Hadoop 2.x or 3.x** - Running in pseudo-distributed or fully-distributed mode
-- **Apache Hive 2.3.9** - Stable release for production use
+- **Apache Hive 4.2.0** - Latest stable release
+
+**Note:** Hive requires Java 1.7 or newer. Java 1.8 (Java 8) is strongly recommended.
 
 ### Assumptions
 
@@ -58,24 +60,24 @@ source ~/.bashrc
 
 ### 2. Download Apache Hive
 
-Download the latest stable release of Hive 2.x from the Apache mirrors:
+Download the latest stable release of Hive from the Apache mirrors:
 
 ```bash
 cd ~
-wget https://downloads.apache.org/hive/hive-2.3.9/apache-hive-2.3.9-bin.tar.gz
+wget https://downloads.apache.org/hive/hive-4.2.0/apache-hive-4.2.0-bin.tar.gz
 ```
 
-**Note:** We're using Hive 2.3.9 (stable2) as it's the most stable version for Hadoop 3.x and suitable for learning environments. While Hive 3.x is available, version 2.3.9 provides better compatibility and stability.
+**Note:** We're using Hive 4.2.0, the latest stable release compatible with Hadoop 3.x.
 
 ### 3. Extract Hive Distribution
 
 Extract the downloaded archive:
 
 ```bash
-tar -xzvf apache-hive-2.3.9-bin.tar.gz
+tar -xzvf apache-hive-4.2.0-bin.tar.gz
 ```
 
-This creates a directory named `apache-hive-2.3.9-bin`.
+This creates a directory named `apache-hive-4.2.0-bin`.
 
 ### 4. Configure Hive Environment Variables
 
@@ -88,7 +90,7 @@ vim ~/.bashrc
 Add the following lines at the end:
 
 ```bash
-export HIVE_HOME=~/apache-hive-2.3.9-bin
+export HIVE_HOME=~/apache-hive-4.2.0-bin
 export PATH=$HIVE_HOME/bin:$PATH
 ```
 
@@ -101,8 +103,8 @@ source ~/.bashrc
 Verify Hive is in your path:
 
 ```bash
-which hive
-hive --version
+which beeline
+beeline --version
 ```
 
 ### 5. Start Hadoop Services
@@ -167,16 +169,19 @@ You should see output indicating successful schema initialization.
 
 ### 8. Verify Hive Installation
 
-Start the Hive CLI:
+Start Beeline (the modern Hive CLI):
 
 ```bash
-hive
+beeline -u jdbc:hive2://
 ```
 
-You should see the Hive prompt:
+**Note:** This starts Beeline and HiveServer2 in the same process for testing purposes. Beeline is the recommended interface for Hive, replacing the deprecated Hive CLI.
+
+You should see the Beeline prompt:
 
 ```
-hive>
+Beeline version 4.2.0 by Apache Hive
+beeline>
 ```
 
 Test basic commands:
@@ -187,12 +192,21 @@ SHOW DATABASES;
 
 Expected output:
 ```
-OK
-default
-Time taken: 0.5 seconds, Fetched: 1 row(s)
++----------------+
+| database_name  |
++----------------+
+| default        |
++----------------+
+1 row selected
 ```
 
-Exit Hive:
+Exit Beeline:
+
+```sql
+!quit
+```
+
+Or simply:
 
 ```sql
 exit;
@@ -235,12 +249,12 @@ Verify the upload:
 hdfs dfs -ls /user/$USER/impressions
 ```
 
-#### 3. Start Hive and Create Table
+#### 3. Start Beeline and Create Table
 
-Start Hive:
+Start Beeline:
 
 ```bash
-hive
+beeline -u jdbc:hive2://
 ```
 
 First, add the JSON SerDe (Serializer/Deserializer) library:
@@ -363,50 +377,74 @@ Hive stores logs in `/tmp/<username>/`:
 
 ### Viewing Logs
 
-To see logs in the console:
+To see logs in the console with Beeline:
 
 ```bash
-hive --hiveconf hive.root.logger=INFO,console
+beeline -u jdbc:hive2:// --hiveconf hive.root.logger=INFO,console
 ```
 
 To change log level:
 
 ```bash
-hive --hiveconf hive.root.logger=DEBUG,DRFA
+beeline -u jdbc:hive2:// --hiveconf hive.root.logger=DEBUG,DRFA
 ```
 
-## Managing Hive Sessions
-
-### Starting Hive
+For HiveServer2 logs:
 
 ```bash
-hive
+hiveserver2 --hiveconf hive.root.logger=INFO,console
 ```
 
-### Exiting Hive
+## Managing Beeline Sessions
+
+### Starting Beeline
+
+For testing (embedded mode - starts HiveServer2 automatically):
+
+```bash
+beeline -u jdbc:hive2://
+```
+
+For production (connect to running HiveServer2):
+
+First, start HiveServer2 as a background service:
+
+```bash
+hiveserver2 &
+```
+
+Then connect with Beeline:
+
+```bash
+beeline -u jdbc:hive2://localhost:10000
+```
+
+**Note:** In production, HiveServer2 should be run as a system service, not as a background process.
+
+### Exiting Beeline
 
 ```sql
-exit;
+!quit
 ```
 
 Or:
 
 ```sql
-quit;
+exit;
 ```
 
-### Running Hive Scripts
+### Running HiveQL Scripts
 
 Execute HiveQL from a file:
 
 ```bash
-hive -f script.hql
+beeline -u jdbc:hive2:// -f script.hql
 ```
 
 Execute inline commands:
 
 ```bash
-hive -e "SHOW DATABASES;"
+beeline -u jdbc:hive2:// -e "SHOW DATABASES;"
 ```
 
 ## Persistent Tables
@@ -425,7 +463,7 @@ Once you create tables in Hive, they persist across sessions:
 hdfs dfs -put newdata.json /user/$USER/impressions/
 
 # Query will automatically include new files
-hive -e "SELECT COUNT(*) FROM impressions;"
+beeline -u jdbc:hive2:// -e "SELECT COUNT(*) FROM impressions;"
 ```
 
 ## Common Issues and Troubleshooting
@@ -435,8 +473,9 @@ hive -e "SELECT COUNT(*) FROM impressions;"
 **Symptom:** "Another instance of Derby may have already booted the database"
 
 **Solution:**
-- Only one Hive session can use Derby at a time
-- Ensure no other Hive processes are running
+- Only one Beeline session can use Derby at a time
+- Ensure no other Hive/Beeline processes are running
+- Check for running HiveServer2: `ps aux | grep hiveserver2`
 - For multi-user environments, use MySQL or PostgreSQL instead
 
 ### HADOOP_HOME Not Set
@@ -484,25 +523,26 @@ hdfs dfs -chmod -R 777 /tmp
 For production environments, consider:
 
 1. **External Metastore** - Use MySQL or PostgreSQL instead of Derby
-2. **HiveServer2** - Enables multi-user access and JDBC/ODBC connections
-3. **Beeline** - Modern CLI that connects to HiveServer2
-4. **Security** - Implement Kerberos authentication
-5. **High Availability** - Configure metastore HA
-6. **Performance** - Use Tez or Spark execution engine instead of MapReduce
+2. **Dedicated HiveServer2** - Run HiveServer2 as a separate service for multi-user access
+3. **Security** - Implement Kerberos authentication
+4. **High Availability** - Configure metastore HA
+5. **Performance** - Use Tez or Spark execution engine instead of MapReduce
+6. **Connection Pooling** - Configure JDBC connection pooling for better performance
 
 ## Next Steps
 
 - Explore HiveQL syntax and advanced queries
 - Learn about partitioning and bucketing
 - Experiment with different file formats (ORC, Parquet)
-- Set up HiveServer2 for multi-user access
-- Integrate with BI tools using JDBC/ODBC
+- Set up dedicated HiveServer2 for multi-user access
+- Integrate with BI tools using JDBC/ODBC connections via Beeline
 - Explore Hive optimization techniques
 
 ## Summary
 
-You now have a working Apache Hive installation on Rocky Linux 10 that:
+You now have a working Apache Hive 4.2.0 installation on Rocky Linux 10 that:
 
+- Uses Beeline as the modern interface (HiveCLI is deprecated)
 - Uses Derby as an embedded metastore (suitable for learning)
 - Integrates with your existing Hadoop installation
 - Provides SQL-like interface for querying HDFS data
