@@ -34,14 +34,16 @@ head titanic.csv
 Create a directory in HDFS and upload the data:
 
 ```bash
-hadoop fs -mkdir -p /user/$USER/titanic
-hadoop fs -put titanic.csv /user/$USER/titanic/
+hadoop fs -mkdir -p /user/<your-username>/titanic
+hadoop fs -put titanic.csv /user/<your-username>/titanic/
 ```
+
+**Important:** Replace `<your-username>` with your actual username (e.g., `zenon`, `hadoop`, etc.).
 
 Verify the upload:
 
 ```bash
-hadoop fs -ls /user/$USER/titanic
+hadoop fs -ls /user/<your-username>/titanic
 ```
 
 ### 3. Create Table in Hive
@@ -72,9 +74,11 @@ CREATE EXTERNAL TABLE titanic (
 ROW FORMAT DELIMITED
 FIELDS TERMINATED BY ','
 STORED AS TEXTFILE
-LOCATION '/user/msaavedra/titanic/'
+LOCATION '/user/<your-username>/titanic/'
 TBLPROPERTIES ("skip.header.line.count"="1");
 ```
+
+**Important:** Replace `<your-username>` with your actual username in the LOCATION path.
 
 **Explanation:**
 - `EXTERNAL TABLE` - Data remains in HDFS even if table is dropped
@@ -250,16 +254,18 @@ DistCp (Distributed Copy) is Hadoop's tool for large-scale data copying.
 Use Hadoop DistCp to copy the impressions data from S3:
 
 ```bash
-hadoop distcp s3a://elasticmapreduce/samples/hive-ads/tables/impressions/ /user/$USER/impressions/
+hadoop distcp s3a://elasticmapreduce/samples/hive-ads/tables/impressions/ /user/<your-username>/impressions/
 ```
+
+**Important:** Replace `<your-username>` with your actual username.
 
 This will copy all files from the S3 bucket to your HDFS directory.
 
 Verify the data was copied:
 
 ```bash
-hadoop fs -ls /user/$USER/impressions/
-hadoop fs -cat /user/$USER/impressions/000000_0 | head -5
+hadoop fs -ls /user/<your-username>/impressions/
+hadoop fs -cat /user/<your-username>/impressions/000000_0 | head -5
 ```
 
 #### 2. Create External Table for JSON Data
@@ -292,8 +298,10 @@ CREATE EXTERNAL TABLE impressions (
     requestBeginTime STRING
 )
 ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
-LOCATION '/user/$USER/impressions/';
+LOCATION '/user/<your-username>/impressions/';
 ```
+
+**Important:** Replace `<your-username>` with your actual username in the LOCATION path.
 
 **Explanation:**
 - `EXTERNAL TABLE` - Data remains in HDFS even if table is dropped
@@ -414,16 +422,7 @@ SELECT COUNT(*) FROM impressions_s3;
 | Setup | One-time copy | Requires credentials |
 | Best for | Frequent queries | Occasional queries |
 
-### Alternative: Download Sample JSON Data
-
-If you don't have AWS access, you can use this alternative approach:
-
-```bash
-cd ~
-wget https://s3.amazonaws.com/hw-sandbox/tutorial8/impressions.tar.gz
-tar -xzvf impressions.tar.gz
-hadoop fs -put impressions /user/$USER/impressions/
-```
+**Important:** Replace `<your-username>` with your actual username.
 
 Then create the table as shown in Method A, step 2.
 
@@ -529,11 +528,13 @@ Once you create tables in Hive, they persist across sessions:
 
 ```bash
 # Add more data files
-hadoop fs -put newdata.json /user/$USER/impressions/
+hadoop fs -put newdata.json /user/<your-username>/impressions/
 
 # Query will automatically include new files
 beeline -u jdbc:hive2:// -e "SELECT COUNT(*) FROM impressions;"
 ```
+
+**Important:** Replace `<your-username>` with your actual username.
 
 ## Configuration Files
 
@@ -734,3 +735,6 @@ This guide covered:
 - Best practices for Hive usage
 
 Hive provides a powerful SQL interface for analyzing large datasets in Hadoop without writing complex MapReduce code.
+
+
+gcloud dataproc clusters create cluster-a345 --enable-component-gateway --region us-central1 --no-address --single-node --master-machine-type n4-standard-2 --master-boot-disk-type hyperdisk-balanced --master-boot-disk-size 100 --image-version 2.2-debian12 --properties core:fs.s3a.aws.credentials.provider=org.apache.hadoop.fs.s3a.AnonymousAWSCredentialsProvider --scopes 'https://www.googleapis.com/auth/cloud-platform' --project admu-iscs-30-23
