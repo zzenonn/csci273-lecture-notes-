@@ -175,7 +175,7 @@ PARTITIONED BY (
     quarter STRING
 )
 STORED AS PARQUET
-LOCATION 'gs://<your-bucket-name>/ookla/mobile/';
+LOCATION 'gs://<your-bucket-name>/parquet/performance/';
 ```
 
 **Important:** Replace `<your-bucket-name>` with your actual bucket name.
