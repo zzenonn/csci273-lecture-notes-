@@ -67,6 +67,12 @@ hadoop fs -ls s3a://ookla-open-data/
 hadoop fs -ls s3a://ookla-open-data/parquet/performance/type=mobile/year=2024/quarter=1/
 ```
 
+### Copy All of the data
+Here, this is copying all Parquet data to GCS from S3.
+```bash
+ hadoop distcp s3a://ookla-open-data/parquet/ gs://<bucket_name>
+```
+
 ### Copy a Subset of Data
 
 For this example, we'll copy mobile network performance data from Q1 2024:
@@ -151,17 +157,22 @@ USE ookla_data;
 
 ```sql
 CREATE EXTERNAL TABLE mobile_performance (
-    avg_d_kbps DOUBLE,
-    avg_u_kbps DOUBLE,
-    avg_lat_ms DOUBLE,
+    quadkey STRING,
+    tile STRING,
+    avg_d_kbps BIGINT,
+    avg_u_kbps BIGINT,
+    avg_lat_ms BIGINT,
     tests BIGINT,
     devices BIGINT,
-    quadkey STRING
+    tile_x DOUBLE,
+    tile_y DOUBLE,
+    avg_lat_down_ms INT,
+    avg_lat_up_ms INT
 )
 PARTITIONED BY (
     type STRING,
-    year INT,
-    quarter INT
+    year STRING,
+    quarter STRING
 )
 STORED AS PARQUET
 LOCATION 'gs://<your-bucket-name>/ookla/mobile/';
@@ -171,9 +182,10 @@ LOCATION 'gs://<your-bucket-name>/ookla/mobile/';
 
 **Explanation:**
 - `EXTERNAL TABLE` - Data remains in GCS even if table is dropped
-- `PARTITIONED BY` - Organizes data by type, year, and quarter
+- `PARTITIONED BY` - Organizes data by type, year, and quarter (as STRING)
 - `STORED AS PARQUET` - Specifies the file format (Parquet is columnar and efficient)
 - `LOCATION` - Points to the GCS bucket path
+- Additional fields: `tile`, `tile_x`, `tile_y`, `avg_lat_down_ms`, `avg_lat_up_ms` for more detailed analysis
 
 ### Repair Table to Discover Partitions
 
@@ -257,17 +269,22 @@ If you copied fixed broadband data:
 
 ```sql
 CREATE EXTERNAL TABLE fixed_performance (
-    avg_d_kbps DOUBLE,
-    avg_u_kbps DOUBLE,
-    avg_lat_ms DOUBLE,
+    quadkey STRING,
+    tile STRING,
+    avg_d_kbps BIGINT,
+    avg_u_kbps BIGINT,
+    avg_lat_ms BIGINT,
     tests BIGINT,
     devices BIGINT,
-    quadkey STRING
+    tile_x DOUBLE,
+    tile_y DOUBLE,
+    avg_lat_down_ms INT,
+    avg_lat_up_ms INT
 )
 PARTITIONED BY (
     type STRING,
-    year INT,
-    quarter INT
+    year STRING,
+    quarter STRING
 )
 STORED AS PARQUET
 LOCATION 'gs://<your-bucket-name>/ookla/fixed/';
@@ -356,12 +373,17 @@ The `quadkey` field is a geospatial identifier that represents a specific tile o
 
 ### Data Fields
 
+- `quadkey` - Geographic tile identifier (Bing Maps Tile System)
+- `tile` - Tile identifier string
 - `avg_d_kbps` - Average download speed in kilobits per second
 - `avg_u_kbps` - Average upload speed in kilobits per second
 - `avg_lat_ms` - Average latency in milliseconds
 - `tests` - Number of speed tests performed
 - `devices` - Number of unique devices tested
-- `quadkey` - Geographic tile identifier
+- `tile_x` - X coordinate of the tile
+- `tile_y` - Y coordinate of the tile
+- `avg_lat_down_ms` - Average download latency in milliseconds
+- `avg_lat_up_ms` - Average upload latency in milliseconds
 
 ## Performance Considerations
 
