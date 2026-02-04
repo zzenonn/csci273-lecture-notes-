@@ -1,5 +1,9 @@
 # Installing Apache Hive on Rocky Linux 10
 
+> **⚠️ UNDER CONSTRUCTION ⚠️**
+> 
+> **This guide is currently under development and may contain issues. The Hive 4.0.1 installation is experiencing classpath configuration problems with the schematool initialization. Please check back later for a working version or use alternative Hive installation methods.**
+
 ## Purpose
 
 This guide provides step-by-step instructions for installing and configuring Apache Hive on Rocky Linux 10. Hive provides a SQL-like interface (HiveQL) for querying and analyzing large datasets stored in Hadoop HDFS, eliminating the need to write complex MapReduce code.
@@ -11,11 +15,11 @@ This guide provides step-by-step instructions for installing and configuring Apa
 ### Required Software
 
 - **Rocky Linux 10** with Hadoop installed and configured
-- **Java 8 or newer** - We use Amazon Corretto 8 (already installed from Hadoop setup)
+- **Java 8 (Amazon Corretto)** - Already installed from Hadoop setup
 - **Hadoop 2.x or 3.x** - Running in pseudo-distributed or fully-distributed mode
-- **Apache Hive 4.2.0** - Latest stable release
+- **Apache Hive 4.0.1** - Stable release compatible with Java 8
 
-**Note:** Hive requires Java 1.7 or newer. Java 1.8 (Java 8) is strongly recommended.
+**Note:** Hive 4.0.1 is compatible with Java 8, unlike newer versions which require Java 11+.
 
 ### Assumptions
 
@@ -60,24 +64,24 @@ source ~/.bashrc
 
 ### 2. Download Apache Hive
 
-Download the latest stable release of Hive from the Apache mirrors:
+Download Hive 4.0.1 from the Apache archives:
 
 ```bash
 cd ~
-wget https://downloads.apache.org/hive/hive-4.2.0/apache-hive-4.2.0-bin.tar.gz
+wget https://archive.apache.org/dist/hive/hive-4.0.1/apache-hive-4.0.1-bin.tar.gz
 ```
 
-**Note:** We're using Hive 4.2.0, the latest stable release compatible with Hadoop 3.x.
+**Note:** We're using Hive 4.0.1 because it's compatible with Java 8. Newer versions (4.2.0+) require Java 21 or higher.
 
 ### 3. Extract Hive Distribution
 
 Extract the downloaded archive:
 
 ```bash
-tar -xzvf apache-hive-4.2.0-bin.tar.gz
+tar -xzvf apache-hive-4.0.1-bin.tar.gz
 ```
 
-This creates a directory named `apache-hive-4.2.0-bin`.
+This creates a directory named `apache-hive-4.0.1-bin`.
 
 ### 4. Configure Hive Environment Variables
 
@@ -90,7 +94,7 @@ vim ~/.bashrc
 Add the following lines at the end:
 
 ```bash
-export HIVE_HOME=~/apache-hive-4.2.0-bin
+export HIVE_HOME=~/apache-hive-4.0.1-bin
 export PATH=$HIVE_HOME/bin:$PATH
 ```
 
@@ -133,10 +137,10 @@ You should see:
 Hive requires specific directories in HDFS with proper permissions:
 
 ```bash
-hdfs dfs -mkdir -p /tmp
-hdfs dfs -mkdir -p /user/hive/warehouse
-hdfs dfs -chmod g+w /tmp
-hdfs dfs -chmod g+w /user/hive/warehouse
+hadoop fs -mkdir -p /tmp
+hadoop fs -mkdir -p /user/hive/warehouse
+hadoop fs -chmod g+w /tmp
+hadoop fs -chmod g+w /user/hive/warehouse
 ```
 
 **Explanation:**
@@ -147,8 +151,8 @@ hdfs dfs -chmod g+w /user/hive/warehouse
 Verify the directories were created:
 
 ```bash
-hdfs dfs -ls /
-hdfs dfs -ls /user/hive
+hadoop fs -ls /
+hadoop fs -ls /user/hive
 ```
 
 ### 7. Initialize Hive Metastore
@@ -157,15 +161,73 @@ Hive uses a metastore to store metadata about tables, columns, and partitions. F
 
 **Important:** Derby is suitable for testing and learning but not for production. Production environments should use MySQL or PostgreSQL.
 
-Initialize the metastore schema:
+#### Fix Guava Library Conflict
+
+Hive 4.0.1 and Hadoop 3.4.2 have conflicting Guava library versions. Fix this before initializing:
 
 ```bash
+# Remove the old Guava from Hive
+rm $HIVE_HOME/lib/guava-*.jar
+
+# Copy Hadoop's Guava to Hive
+cp $HADOOP_HOME/share/hadoop/common/lib/guava-*.jar $HIVE_HOME/lib/
+```
+
+#### Fix Schematool Classpath Issue
+
+The schematool script may not be finding Hive classes. Edit the schematool script:
+
+```bash
+vim $HIVE_HOME/bin/schematool
+```
+
+Find the line that starts with `exec` near the end of the file and add the Hive lib directory to the classpath. Look for a line like:
+
+```bash
+exec "$HADOOP" jar "$JAR" org.apache.hive.beeline.schematool.HiveSchemaTool "$@"
+```
+
+Change it to:
+
+```bash
+export HADOOP_CLASSPATH="$HIVE_HOME/lib/*:$HADOOP_CLASSPATH"
+exec "$HADOOP" jar "$JAR" org.apache.hive.beeline.schematool.HiveSchemaTool "$@"
+```
+
+Save and exit.
+
+#### Alternative: Use Direct Java Command
+
+If editing the script doesn't work, run schematool directly with Java:
+
+```bash
+cd ~
+export HADOOP_CLASSPATH=$HIVE_HOME/lib/*
+
+hadoop jar $HIVE_HOME/lib/hive-standalone-metastore-*.jar \
+  org.apache.hive.beeline.schematool.HiveSchemaTool \
+  -dbType derby -initSchema
+```
+
+#### Initialize the Metastore
+
+Now try initializing:
+
+```bash
+cd ~
 schematool -dbType derby -initSchema
 ```
 
-You should see output indicating successful schema initialization.
+You should see output indicating successful schema initialization:
 
-**Note:** This creates a `metastore_db` directory in your current location. The first time you run `hive`, make sure you're in the same directory, or Derby will create a new metastore.
+```
+Metastore connection URL: jdbc:derby:;databaseName=metastore_db;create=true
+Metastore Connection Driver : org.apache.derby.jdbc.EmbeddedDriver
+...
+schemaTool completed
+```
+
+**Note:** This creates a `metastore_db` directory in your current location. Always run Beeline from the same directory where you initialized the metastore.
 
 ### 8. Verify Hive Installation
 
@@ -180,7 +242,7 @@ beeline -u jdbc:hive2://
 You should see the Beeline prompt:
 
 ```
-Beeline version 4.2.0 by Apache Hive
+Beeline version 4.0.1 by Apache Hive
 beeline>
 ```
 
@@ -212,132 +274,14 @@ Or simply:
 exit;
 ```
 
-## Working with Hive - Example Workflow
+## Next Steps
 
-### Example: Processing JSON Data
-
-This example demonstrates how to process JSON log files using Hive, which would otherwise require complex MapReduce code.
-
-#### 1. Download Sample Data
-
-For this example, we'll use AWS impression logs. Download the sample data:
-
-```bash
-cd ~
-wget https://s3.amazonaws.com/hw-sandbox/tutorial8/impressions.tar.gz
-```
-
-**Note:** If the link is unavailable, any JSON dataset can be used with appropriate schema modifications.
-
-Extract the data:
-
-```bash
-tar -xzvf impressions.tar.gz
-```
-
-#### 2. Upload Data to HDFS
-
-Upload the impressions data to HDFS:
-
-```bash
-hdfs dfs -put impressions /user/$USER/impressions
-```
-
-Verify the upload:
-
-```bash
-hdfs dfs -ls /user/$USER/impressions
-```
-
-#### 3. Start Beeline and Create Table
-
-Start Beeline:
-
-```bash
-beeline -u jdbc:hive2://
-```
-
-First, add the JSON SerDe (Serializer/Deserializer) library:
-
-```sql
-ADD JAR /path/to/hive-hcatalog-core.jar;
-```
-
-**Note:** The exact path depends on your Hive installation. Typically found in `$HIVE_HOME/hcatalog/share/hcatalog/`.
-
-Create an external table for the JSON data:
-
-```sql
-CREATE EXTERNAL TABLE impressions (
-    requestBeginTime STRING,
-    adId STRING,
-    impressionId STRING,
-    referrer STRING,
-    userAgent STRING,
-    userCookie STRING,
-    ip STRING
-)
-ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
-LOCATION '/user/$USER/impressions';
-```
-
-**Explanation:**
-- `EXTERNAL TABLE` - Data remains in HDFS even if table is dropped
-- `ROW FORMAT SERDE` - Specifies JSON SerDe for parsing JSON files
-- `LOCATION` - Points to HDFS directory containing the data
-
-#### 4. Load Metadata
-
-Repair the table to load partition metadata:
-
-```sql
-MSCK REPAIR TABLE impressions;
-```
-
-#### 5. Query the Data
-
-Now you can use SQL to query the data:
-
-```sql
-SELECT requestBeginTime FROM impressions LIMIT 10;
-```
-
-Count total records:
-
-```sql
-SELECT COUNT(*) FROM impressions;
-```
-
-**Note:** Hive converts these SQL queries into MapReduce jobs automatically. You'll see MapReduce job progress in the output.
-
-#### 6. View Databases and Tables
-
-List all databases:
-
-```sql
-SHOW DATABASES;
-```
-
-List tables in current database:
-
-```sql
-SHOW TABLES;
-```
-
-Describe table structure:
-
-```sql
-DESCRIBE impressions;
-```
-
-### Performance Considerations
-
-Hive queries run as MapReduce jobs, which means:
-- Initial setup time for each query
-- Better suited for batch processing than interactive queries
-- Queries on small datasets may be slower than direct file processing
-
-**Tip:** For faster query execution, newer versions of Hive can use Apache Spark instead of MapReduce as the execution engine.
+Now that Hive is installed, you can start working with it. See [Working with Apache Hive](03_working_with_hive.md) for examples of:
+- Processing JSON data
+- Creating tables and loading data
+- Running HiveQL queries
+- Managing Beeline sessions
+- Common HiveQL operations
 
 ## Configuration Files
 
@@ -347,124 +291,7 @@ Hive queries run as MapReduce jobs, which means:
 - **hive-default.xml** - Default configurations (`$HIVE_HOME/conf/hive-default.xml`)
 - **hive-log4j.properties** - Logging configuration (`$HIVE_HOME/conf/hive-log4j.properties`)
 
-### Common Configuration Options
-
-To customize Hive, create or edit `$HIVE_HOME/conf/hive-site.xml`:
-
-```xml
-<configuration>
-    <property>
-        <name>hive.metastore.warehouse.dir</name>
-        <value>/user/hive/warehouse</value>
-        <description>Default location for Hive tables</description>
-    </property>
-    
-    <property>
-        <name>hive.exec.mode.local.auto</name>
-        <value>false</value>
-        <description>Enable automatic local mode for small datasets</description>
-    </property>
-</configuration>
-```
-
-## Hive Logging
-
-### Log Locations
-
-Hive stores logs in `/tmp/<username>/`:
-- `hive.log` - Main Hive log file
-- Query logs - Per-session query logs
-
-### Viewing Logs
-
-To see logs in the console with Beeline:
-
-```bash
-beeline -u jdbc:hive2:// --hiveconf hive.root.logger=INFO,console
-```
-
-To change log level:
-
-```bash
-beeline -u jdbc:hive2:// --hiveconf hive.root.logger=DEBUG,DRFA
-```
-
-For HiveServer2 logs:
-
-```bash
-hiveserver2 --hiveconf hive.root.logger=INFO,console
-```
-
-## Managing Beeline Sessions
-
-### Starting Beeline
-
-For testing (embedded mode - starts HiveServer2 automatically):
-
-```bash
-beeline -u jdbc:hive2://
-```
-
-For production (connect to running HiveServer2):
-
-First, start HiveServer2 as a background service:
-
-```bash
-hiveserver2 &
-```
-
-Then connect with Beeline:
-
-```bash
-beeline -u jdbc:hive2://localhost:10000
-```
-
-**Note:** In production, HiveServer2 should be run as a system service, not as a background process.
-
-### Exiting Beeline
-
-```sql
-!quit
-```
-
-Or:
-
-```sql
-exit;
-```
-
-### Running HiveQL Scripts
-
-Execute HiveQL from a file:
-
-```bash
-beeline -u jdbc:hive2:// -f script.hql
-```
-
-Execute inline commands:
-
-```bash
-beeline -u jdbc:hive2:// -e "SHOW DATABASES;"
-```
-
-## Persistent Tables
-
-Once you create tables in Hive, they persist across sessions:
-
-1. Tables remain available after exiting Hive
-2. Metadata is stored in the Derby metastore
-3. Data remains in HDFS at the specified location
-4. You can add more files to the HDFS directory, and they'll be automatically included in queries
-
-**Example:**
-
-```bash
-# Add more data files
-hdfs dfs -put newdata.json /user/$USER/impressions/
-
-# Query will automatically include new files
-beeline -u jdbc:hive2:// -e "SELECT COUNT(*) FROM impressions;"
-```
+For detailed configuration options and usage examples, see [Working with Apache Hive](03_working_with_hive.md).
 
 ## Common Issues and Troubleshooting
 
@@ -493,8 +320,8 @@ beeline -u jdbc:hive2:// -e "SELECT COUNT(*) FROM impressions;"
 
 **Solution:**
 ```bash
-hdfs dfs -chmod -R 777 /user/hive/warehouse
-hdfs dfs -chmod -R 777 /tmp
+hadoop fs -chmod -R 777 /user/hive/warehouse
+hadoop fs -chmod -R 777 /tmp
 ```
 
 **Note:** 777 permissions are acceptable for learning environments but not for production.
@@ -506,7 +333,35 @@ hdfs dfs -chmod -R 777 /tmp
 **Solution:**
 1. Check Hadoop services: `jps`
 2. Start Hadoop if needed: `start-all.sh`
-3. Verify HDFS is accessible: `hdfs dfs -ls /`
+3. Verify HDFS is accessible: `hadoop fs -ls /`
+
+### NameNode in Safe Mode
+
+**Symptom:** `mkdir: Cannot create directory. Name node is in safe mode.`
+
+**Cause:** HDFS is in safe mode, which is a read-only state that prevents modifications. This typically occurs when:
+- HDFS is starting up and checking block replication
+- The cluster has insufficient DataNodes running
+- HDFS detected issues during startup
+
+**Solution:**
+
+Check safe mode status:
+```bash
+hadoop dfsadmin -safemode get
+```
+
+If safe mode is ON, you can manually leave safe mode:
+```bash
+hadoop dfsadmin -safemode leave
+```
+
+**Note:** Only use this command if you're certain HDFS has finished its startup checks. In production, let HDFS exit safe mode automatically to ensure data integrity.
+
+If the problem persists:
+1. Check DataNode is running: `jps` (should show DataNode)
+2. Check HDFS logs: `$HADOOP_HOME/logs/hadoop-*-namenode-*.log`
+3. Verify block replication: `hadoop dfsadmin -report`
 
 ## Best Practices
 
@@ -529,19 +384,11 @@ For production environments, consider:
 5. **Performance** - Use Tez or Spark execution engine instead of MapReduce
 6. **Connection Pooling** - Configure JDBC connection pooling for better performance
 
-## Next Steps
-
-- Explore HiveQL syntax and advanced queries
-- Learn about partitioning and bucketing
-- Experiment with different file formats (ORC, Parquet)
-- Set up dedicated HiveServer2 for multi-user access
-- Integrate with BI tools using JDBC/ODBC connections via Beeline
-- Explore Hive optimization techniques
-
 ## Summary
 
-You now have a working Apache Hive 4.2.0 installation on Rocky Linux 10 that:
+You now have a working Apache Hive 4.0.1 installation on Rocky Linux 10 that:
 
+- Uses Java 8 (compatible with both Hadoop and Hive 4.0.1)
 - Uses Beeline as the modern interface (HiveCLI is deprecated)
 - Uses Derby as an embedded metastore (suitable for learning)
 - Integrates with your existing Hadoop installation
