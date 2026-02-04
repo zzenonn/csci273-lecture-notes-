@@ -15,13 +15,6 @@ This guide demonstrates how to use Hadoop DistCp (Distributed Copy) to copy larg
 gcloud compute ssh <your-cluster-name>-m --zone=us-central1-a
 ```
 
-## Why Copy from S3 to GCS?
-
-- **Performance**: Querying data in GCS is faster than accessing S3 from GCP
-- **Cost**: Avoid S3 egress charges for repeated queries
-- **Integration**: Better integration with other GCP services
-- **Reliability**: Data stored in the same cloud provider as your compute
-
 ## Example Dataset: Ookla Open Data
 
 We'll use the Ookla Open Data dataset, which contains global network performance metrics. This is a public dataset available on S3.
